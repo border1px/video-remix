@@ -247,154 +247,186 @@ def process_video(input_text):
     
     return downloader.process_douyin_link(input_text)
 
-def generate_copywriting_with_gemini(video_path, prompt, api_key):
-    """使用Gemini生成文案的界面函数"""
+def process_video_with_state(input_text, current_video_path):
+    """处理视频下载并更新状态"""
+    if not input_text.strip():
+        return None, "❌ 请输入抖音链接或包含链接的文本", current_video_path
+    
+    # 提取链接
+    douyin_url = downloader.extract_douyin_url(input_text)
+    if not douyin_url:
+        return None, "❌ 未找到有效的抖音链接，请检查输入格式", current_video_path
+    
+    # 解析视频
+    parse_result = downloader.parse_video(douyin_url)
+    if not parse_result['success']:
+        return None, f"❌ 解析失败: {parse_result['error']}", current_video_path
+    
+    # 获取视频信息
+    title = parse_result['title']
+    author = parse_result['author']
+    video_url = parse_result['video_url']
+    
+    if not video_url:
+        return None, "❌ 未获取到视频下载链接", current_video_path
+    
+    # 下载视频
+    download_result = downloader.download_video(video_url, title)
+    if not download_result['success']:
+        return None, f"❌ 下载失败: {download_result['error']}", current_video_path
+    
+    # 更新状态
+    new_video_path = download_result['filepath']
+    
+    # 返回成功信息
+    success_msg = f"✅ 下载成功！\n\n📹 标题: {title}\n👤 作者: {author}\n📁 文件: {download_result['filename']}\n💾 路径: {download_result['filepath']}"
+    
+    return new_video_path, success_msg, new_video_path
+
+def generate_copywriting_with_state(video_upload, prompt, api_key, current_video_path):
+    """使用Gemini生成文案的界面函数（带状态管理）"""
+    # 确定使用的视频文件
+    video_path = None
+    if video_upload is not None:
+        video_path = video_upload.name
+    elif current_video_path is not None:
+        video_path = current_video_path
+    
     if not video_path:
-        yield "❌ 请先下载视频", None
-        return
+        return "❌ 请先下载视频或上传视频文件"
     
     if not api_key.strip():
-        yield "❌ 请输入Gemini API密钥", None
-        return
+        return "❌ 请先在配置页面输入Gemini API密钥"
     
     # 更新下载器的API密钥
     global downloader
     if downloader.gemini_api_key != api_key:
         downloader = DouyinDownloader(gemini_api_key=api_key)
     
-    # 显示上传进度
-    yield "🔄 正在上传视频到Gemini...", None
-    
     # 生成文案
     result = downloader.generate_copywriting(video_path, prompt)
     
     if result['success']:
-        yield f"✅ 文案生成成功！\n\n{result['copywriting']}", result['copywriting']
+        return f"✅ 文案生成成功！\n\n{result['copywriting']}"
     else:
-        yield f"❌ 生成失败: {result['error']}", None
+        return f"❌ 生成失败: {result['error']}"
+
+def save_gemini_config(api_key):
+    """保存Gemini API配置"""
+    if not api_key.strip():
+        return "", "❌ 请输入有效的API密钥"
+    
+    # 验证API密钥格式（简单验证）
+    if len(api_key) < 20:
+        return "", "❌ API密钥格式不正确"
+    
+    return api_key, "✅ 配置保存成功"
 
 # 创建Gradio界面
 def create_interface():
-    with gr.Blocks(title="抖音视频下载器", theme=gr.themes.Soft()) as interface:
-        gr.Markdown("# 🎵 抖音视频下载器")
-        gr.Markdown("支持解析抖音短视频链接并下载视频文件")
+    with gr.Blocks(title="作者工具", theme=gr.themes.Soft()) as interface:
+        gr.Markdown("# 🎵 作者工具")
+        gr.Markdown("支持抖音视频下载、AI文案生成和配置管理")
         
-        with gr.Row():
-            with gr.Column(scale=2):
-                input_text = gr.Textbox(
-                    label="抖音链接",
-                    placeholder="请输入抖音链接或包含链接的文本...",
-                    lines=3,
-                    info="支持直接粘贴包含链接的完整文本"
-                )
+        # 全局状态管理
+        current_video_path = gr.State(value=None)
+        gemini_api_key_state = gr.State(value="")
+        
+        # 创建三个标签页
+        with gr.Tabs():
+            # 视频下载标签页
+            with gr.Tab("视频下载"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        input_text = gr.Textbox(
+                            label="请输入链接地址",
+                            placeholder="请输入抖音链接或包含链接的文本...",
+                            lines=12
+                        )
+                        
+                        process_btn = gr.Button("开始下载", variant="primary", size="lg")
+                    
+                    with gr.Column(scale=1):
+                        video_preview = gr.Video(
+                            label="视频预览",
+                            height=300,
+                            show_download_button=True,
+                            interactive=False
+                        )
                 
-                process_btn = gr.Button("🚀 开始下载", variant="primary", size="lg")
-            
-            with gr.Column(scale=1):
-                gr.Markdown("### 📋 使用说明")
-                gr.Markdown("""
-                1. 复制抖音视频链接
-                2. 粘贴到输入框中
-                3. 点击"开始下载"按钮
-                4. 等待下载完成
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        api_response = gr.Textbox(
+                            label="接口返回的原始信息",
+                            lines=8,
+                            interactive=False
+                        )
                 
-                **支持的链接格式：**
-                - `https://v.douyin.com/xxxxx/`
-                - 包含链接的完整文本
-                """)
-        
-        with gr.Row():
-            result_text = gr.Textbox(
-                label="处理结果",
-                lines=6,
-                interactive=False
-            )
-        
-        with gr.Row():
-            video_preview = gr.Video(
-                label="视频预览",
-                height=400,
-                show_download_button=True,
-                interactive=False
-            )
-            cover_image = gr.Image(
-                label="封面图片",
-                height=400,
-                interactive=False,
-                visible=False
-            )
-        
-        # 添加下载信息显示
-        download_info = gr.Textbox(
-            label="下载信息",
-            lines=2,
-            interactive=False
-        )
-        
-        # 绑定事件
-        process_btn.click(
-            fn=process_video,
-            inputs=[input_text],
-            outputs=[result_text, video_preview, download_info]
-        )
-        
-        # 添加Gemini文案生成区域
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### 🤖 Gemini文案生成")
-                gemini_api_key = gr.Textbox(
-                    label="Gemini API密钥",
-                    type="password",
-                    placeholder="请输入您的Gemini API密钥..."
+                # 绑定事件
+                process_btn.click(
+                    fn=process_video_with_state,
+                    inputs=[input_text, current_video_path],
+                    outputs=[video_preview, api_response, current_video_path]
                 )
-                copywriting_prompt = gr.Textbox(
-                    label="提示词",
-                    value="请分析这个视频的内容，并生成一个吸引人的抖音文案，要求：1. 突出视频亮点 2. 使用热门话题标签 3. 语言生动有趣 4. 适合抖音平台传播",
-                    lines=4,
-                    placeholder="请输入您想要的文案风格和要求..."
-                )
-                generate_btn = gr.Button("🚀 生成文案", variant="primary")
             
-            with gr.Column(scale=1):
-                copywriting_result = gr.Textbox(
-                    label="生成结果",
-                    lines=8,
-                    interactive=False
+            # AI文案生成标签页
+            with gr.Tab("AI文案生成"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        prompt_template = gr.Textbox(
+                            label="提示词模板",
+                            value="请分析这个视频的内容，并生成一个吸引人的抖音文案，要求：1. 突出视频亮点 2. 使用热门话题标签 3. 语言生动有趣 4. 适合抖音平台传播",
+                            lines=4,
+                            placeholder="请输入您想要的文案风格和要求..."
+                        )
+                        
+                        video_upload = gr.File(
+                            label="视频上传",
+                            file_count="single",
+                            file_types=["video"]
+                        )
+                        
+                        generate_btn = gr.Button("开始生成", variant="primary", size="lg")
+                    
+                    with gr.Column(scale=1):
+                        copywriting_result = gr.Markdown(
+                            label="gemini输出结果 (markdown)",
+                            value="",
+                            show_copy_button=True
+                        )
+                
+                # 绑定事件
+                generate_btn.click(
+                    fn=generate_copywriting_with_state,
+                    inputs=[video_upload, prompt_template, gemini_api_key_state, current_video_path],
+                    outputs=[copywriting_result]
                 )
-                copywriting_output = gr.Textbox(
-                    label="纯文案内容",
-                    lines=4,
-                    interactive=True
+            
+            # 配置标签页
+            with gr.Tab("配置"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gemini_api_key = gr.Textbox(
+                            label="gemini key配置",
+                            type="password",
+                            placeholder="请输入您的Gemini API密钥..."
+                        )
+                        
+                        save_config_btn = gr.Button("保存配置", variant="primary")
+                        
+                        config_status = gr.Textbox(
+                            label="配置状态",
+                            lines=2,
+                            interactive=False,
+                            value="未配置"
+                        )
+                
+                # 绑定事件
+                save_config_btn.click(
+                    fn=save_gemini_config,
+                    inputs=[gemini_api_key],
+                    outputs=[gemini_api_key_state, config_status]
                 )
-        
-        # 绑定文案生成事件
-        generate_btn.click(
-            fn=generate_copywriting_with_gemini,
-            inputs=[video_preview, copywriting_prompt, gemini_api_key],
-            outputs=[copywriting_result, copywriting_output],
-            show_progress=True
-        )
-        
-        # 添加文件浏览器
-        with gr.Row():
-            gr.Markdown("### 📁 下载的文件")
-            file_browser = gr.File(
-                label="选择视频文件",
-                file_count="single",
-                file_types=["video"]
-            )
-        
-        # 文件选择事件
-        def on_file_select(file):
-            if file is None:
-                return None
-            return file.name
-        
-        file_browser.change(
-            fn=on_file_select,
-            inputs=[file_browser],
-            outputs=[video_preview]
-        )
         
         # 示例
         gr.Markdown("### 💡 示例输入")
@@ -404,19 +436,6 @@ def create_interface():
             ],
             inputs=[input_text]
         )
-        
-        # 使用说明
-        gr.Markdown("""
-        ### 📖 使用说明
-        
-        1. **下载视频**：粘贴抖音链接，点击"开始下载"
-        2. **配置API**：输入您的Gemini API密钥
-        3. **自定义提示**：根据需要修改提示词
-        4. **生成文案**：点击"生成文案"按钮
-        5. **复制使用**：从"纯文案内容"区域复制生成的文案
-        
-        **获取Gemini API密钥**：访问 [Google AI Studio](https://aistudio.google.com/app/apikey)
-        """)
     
     return interface
 
