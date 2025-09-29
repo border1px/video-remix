@@ -23,24 +23,34 @@ def create_config_tab():
         status = "已配置" if api_key else "未配置"
         return api_key, status
     
+    
+    
     # 创建配置标签页界面
     with gr.Tab("配置"):
         with gr.Row():
             with gr.Column(scale=1):
+                # 获取已保存的配置作为初始值
+                saved_api_key = config_manager.get("gemini_api_key", "")
+                
                 gemini_api_key = gr.Textbox(
                     label="Gemini API密钥",
                     type="password",
-                    placeholder="请输入您的Gemini API密钥..."
+                    placeholder="请输入您的Gemini API密钥...",
+                    value=saved_api_key
                 )
+                
                 
                 save_config_btn = gr.Button("保存配置", variant="primary")
                 load_config_btn = gr.Button("加载已有配置", variant="secondary")
+                
+                # 根据是否有配置来显示状态
+                saved_status = "已配置" if saved_api_key else "未配置"
                 
                 config_status = gr.Textbox(
                     label="配置状态",
                     lines=2,
                     interactive=False,
-                    value="未配置"
+                    value=saved_status
                 )
         
         # 绑定事件
