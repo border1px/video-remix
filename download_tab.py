@@ -1,9 +1,33 @@
 import gradio as gr
 import json
+import os
+import glob
 from douyin_core import DouyinDownloader
+
+def get_latest_video_path():
+    """获取downloads目录中最新的一视频文件路径"""
+    downloads_dir = "downloads"
+    if not os.path.exists(downloads_dir):
+        return None
+    
+    # 查找所有MP4文件
+    video_files = glob.glob(os.path.join(downloads_dir, "*.mp4"))
+    if not video_files:
+        return None
+    
+    # 按修改时间排序，取最新的
+    latest_file = max(video_files, key=os.path.getmtime)
+    return latest_file
 
 def create_download_tab(downloader):
     """创建视频下载标签页"""
+    
+    def sync_to_copywriting():
+        """同步最新视频到AI文案创作tab"""
+        latest_video = get_latest_video_path()
+        if latest_video:
+            return latest_video
+        return None
     
     def process_video_with_state(input_text, current_video_path):
         """处理视频下载并更新状态"""
@@ -58,6 +82,7 @@ def create_download_tab(downloader):
                 )
                 
                 process_btn = gr.Button("开始下载", variant="primary", size="lg")
+                reference_btn = gr.Button("参考创作", variant="secondary", size="lg", interactive=False)
             
             with gr.Column(scale=1):
                 video_preview = gr.Video(
@@ -75,12 +100,33 @@ def create_download_tab(downloader):
                     interactive=False
                 )
         
+        def process_video_with_button_state(input_text, current_video_path):
+            """处理视频下载并更新按钮状态"""
+            result = process_video_with_state(input_text, current_video_path)
+            if len(result) == 4:
+                video_path, msg, new_path, api_info = result
+                # 如果下载成功，启用参考创作按钮
+                button_enabled = video_path is not None
+                return video_path, msg, new_path, api_info, gr.update(interactive=button_enabled)
+            else:
+                return result[0], result[1], result[2], result[3], gr.update(interactive=False)
+        
         # 绑定事件
+        download_outputs = [video_preview, gr.Textbox(label="状态信息"), gr.State(), api_response, reference_btn]
         process_btn.click(
-            fn=process_video_with_state,
+            fn=process_video_with_button_state,
             inputs=[input_text, gr.State()],
-            outputs=[video_preview, gr.Textbox(label="状态信息"), gr.State(), api_response]
+            outputs=download_outputs
         )
         
-        # 返回输入框，供主程序使用示例
-        return input_text
+        # 绑定参考创作按钮事件 - 需要创建全局状态来传递视频路径
+        global_copywriting_video_path = gr.State()
+        
+        reference_btn.click(
+            fn=sync_to_copywriting,
+            inputs=[],
+            outputs=[global_copywriting_video_path]
+        )
+        
+        # 返回输入框和按钮，供主程序使用
+        return input_text, reference_btn, global_copywriting_video_path
