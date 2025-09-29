@@ -1,3 +1,4 @@
 gradio
 requests
+watchfiles
 google-genai

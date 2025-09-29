@@ -78,11 +78,12 @@ def create_download_tab(downloader):
                 input_text = gr.Textbox(
                     label="请输入链接地址",
                     placeholder="请输入抖音链接或包含链接的文本...",
-                    lines=12
+                    lines=15
                 )
                 
-                process_btn = gr.Button("开始下载", variant="primary", size="lg")
-                reference_btn = gr.Button("参考创作", variant="secondary", size="lg", interactive=False)
+                with gr.Row():
+                    process_btn = gr.Button("开始下载", variant="primary", size="lg")
+                    reference_btn = gr.Button("参考创作", variant="secondary", size="lg", interactive=False)
             
             with gr.Column(scale=1):
                 video_preview = gr.Video(
@@ -127,6 +128,16 @@ def create_download_tab(downloader):
             inputs=[],
             outputs=[global_copywriting_video_path]
         )
+        
+        with gr.Column():      
+            # 示例
+            gr.Markdown("### 💡 示例输入")
+            gr.Examples(
+                examples=[
+                    ["5.10 复制打开扌斗🎵，看看【草莓啵啵的作品】适合宝宝磨耳朵的英文儿歌～# 英语启蒙 # 每日英... https://v.douyin.com/_UUPq33ezOI/ O@k.pq zTl:/ 12/14"]
+                ],
+                inputs=[input_text]
+            )
         
         # 返回输入框和按钮，供主程序使用
         return input_text, reference_btn, global_copywriting_video_path
