@@ -15,6 +15,12 @@ def create_copywriting_tab(downloader):
             return video_path
         return None
     
+    def update_video_preview(file_obj):
+        """更新视频预览"""
+        if file_obj is not None:
+            return file_obj  # 直接返回文件对象给Video组件
+        return None
+    
     def format_start_time():
         """格式化开始时间"""
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -189,7 +195,7 @@ def create_copywriting_tab(downloader):
     1. 宝宝的第一视角，风格是：“宝宝吐槽 + 育儿知识反差输出 + 家庭修罗场（三方视角冲突）”
     2. 文案时长控制在45s以内，开头吸睛（宝宝吐槽搞笑/讽刺）；中段带入家庭矛盾或共鸣点；结尾甩出一个轻量育儿干货/金句。
 """,
-                    lines=15,  # 增加行数
+                    lines=12,  # 增加行数
                     placeholder="请输入您想要的文案风格和要求...",
                     elem_classes="left-panel"
                 )
@@ -199,6 +205,13 @@ def create_copywriting_tab(downloader):
                     file_count="single",
                     file_types=["video"],
                     elem_classes="video-upload"
+                )
+                
+                # 视频预览组件
+                video_preview = gr.Video(
+                    label="📺 视频预览",
+                    height=200,
+                    elem_classes="video-preview"
                 )
                 
                 generate_btn = gr.Button("🚀 开始生成", variant="primary", size="lg")
@@ -252,6 +265,13 @@ def create_copywriting_tab(downloader):
             outputs=[conversation_state]
         )
         
+        # 视频上传预览事件
+        video_upload.change(
+            fn=update_video_preview,
+            inputs=[video_upload],
+            outputs=[video_preview]
+        )
+        
         # 对话事件
         chat_btn.click(
             fn=continue_conversation,
@@ -263,5 +283,5 @@ def create_copywriting_tab(downloader):
             outputs=[conversation_state]
         )
         
-        # 返回video_upload控件和generate_btn供主程序使用
-        return video_upload, generate_btn
+        # 返回video_upload控件、video_preview控件和generate_btn供主程序使用
+        return video_upload, video_preview, generate_btn

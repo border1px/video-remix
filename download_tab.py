@@ -39,7 +39,11 @@ def create_download_tab(downloader):
         if not douyin_url:
             return None, "❌ 未找到有效的抖音链接，请检查输入格式", current_video_path
         
+        # 控制台输出解析的抖音链接地址
+        print(f"🔍 [解析] 从输入文本中提取的抖音链接: {douyin_url}")
+        
         # 解析视频
+        print(f"🚀 [开始] 开始解析视频信息...")
         parse_result = downloader.parse_video(douyin_url)
         if not parse_result['success']:
             api_info = json.dumps(parse_result.get('raw_response', {}), ensure_ascii=False, indent=2)
@@ -50,11 +54,17 @@ def create_download_tab(downloader):
         author = parse_result['author']
         video_url = parse_result['video_url']
         
+        # 控制台输出视频信息
+        print(f"📹 [视频] 标题: {title}")
+        print(f"👤 [作者] {author}")
+        print(f"🔗 [下载] 视频链接: {video_url}")
+        
         if not video_url:
             api_info = json.dumps(parse_result.get('raw_response', {}), ensure_ascii=False, indent=2)
             return None, "❌ 未获取到视频下载链接", current_video_path, api_info
         
         # 下载视频
+        print(f"⬇️  [下载] 开始下载视频到本地...")
         download_result = downloader.download_video(video_url, title)
         if not download_result['success']:
             api_info = json.dumps(parse_result.get('raw_response', {}), ensure_ascii=False, indent=2)
@@ -65,6 +75,12 @@ def create_download_tab(downloader):
         
         # 返回成功信息
         success_msg = f"✅ 下载成功！\n\n📹 标题: {title}\n👤 作者: {author}\n📁 文件: {download_result['filename']}\n💾 路径: {download_result['filepath']}"
+        
+        # 控制台输出下载完成信息
+        print(f"✅ [完成] 视频下载成功!")
+        print(f"📁 [文件] {download_result['filename']}")
+        print(f"💾 [路径] {download_result['filepath']}")
+        print(f"{'='*60}")
         
         # 格式化API返回信息
         api_info = json.dumps(parse_result.get('raw_response', {}), ensure_ascii=False, indent=2)
@@ -78,11 +94,11 @@ def create_download_tab(downloader):
                 input_text = gr.Textbox(
                     label="请输入链接地址",
                     placeholder="请输入抖音链接或包含链接的文本...",
-                    lines=15
+                    lines=12
                 )
                 
                 with gr.Row():
-                    process_btn = gr.Button("开始下载", variant="primary", size="lg")
+                    process_btn = gr.Button("开始解析", variant="primary", size="lg")
                     reference_btn = gr.Button("参考创作", variant="secondary", size="lg", interactive=False)
             
             with gr.Column(scale=1):
@@ -93,13 +109,21 @@ def create_download_tab(downloader):
                     interactive=False
                 )
         
+        # 状态信息区域：一行显示两个控件
         with gr.Row():
-            with gr.Column(scale=1):
-                api_response = gr.Textbox(
-                    label="接口返回的原始信息",
-                    lines=8,
-                    interactive=False
-                )
+            status_info = gr.Textbox(
+                label="📊 状态信息",
+                lines=8,
+                interactive=False,
+                elem_classes="status-info"
+            )
+            
+            api_response = gr.Textbox(
+                label="🔍 接口返回的原始信息",
+                lines=8,
+                interactive=False,
+                elem_classes="api-response"
+            )
         
         def process_video_with_button_state(input_text, current_video_path):
             """处理视频下载并更新按钮状态"""
@@ -113,7 +137,7 @@ def create_download_tab(downloader):
                 return result[0], result[1], result[2], result[3], gr.update(interactive=False)
         
         # 绑定事件
-        download_outputs = [video_preview, gr.Textbox(label="状态信息"), gr.State(), api_response, reference_btn]
+        download_outputs = [video_preview, status_info, gr.State(), api_response, reference_btn]
         process_btn.click(
             fn=process_video_with_button_state,
             inputs=[input_text, gr.State()],
