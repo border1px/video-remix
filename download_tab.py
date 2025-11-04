@@ -88,7 +88,7 @@ def create_download_tab(downloader):
         return new_video_path, success_msg, new_video_path, api_info
     
     # 创建视频下载标签页界面
-    with gr.Tab("视频下载"):
+    with gr.Tab("视频解析"):
         with gr.Row():
             with gr.Column(scale=1):
                 input_text = gr.Textbox(

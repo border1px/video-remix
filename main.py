@@ -27,19 +27,19 @@ def create_interface():
         
         with gr.Tabs():
             input_text, reference_btn, global_copywriting_video_path = create_download_tab(downloader)
-            video_upload, video_preview, generate_btn = create_copywriting_tab(downloader)
+            video_input, generate_btn = create_copywriting_tab(downloader)
             create_config_tab()
         
         def sync_video_to_copywriting(video_path):
             """同步视频到文案生成tab"""
             if video_path and os.path.exists(video_path):
-                return video_path, video_path  # 同时更新上传控件和预览控件
-            return None, None
+                return video_path  # 更新video_input组件
+            return None
         
         global_copywriting_video_path.change(
             fn=sync_video_to_copywriting,
             inputs=[global_copywriting_video_path],
-            outputs=[video_upload, video_preview]
+            outputs=[video_input]
         )
     
     return interface
@@ -48,10 +48,4 @@ def create_interface():
 demo = create_interface()
 
 if __name__ == "__main__":
-    # 保持原有启动逻辑（兼容直接运行）
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True
-    )
+    demo.launch()
