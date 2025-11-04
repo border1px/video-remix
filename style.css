@@ -8,35 +8,26 @@
 .markdown-result {
   background-color: #f8f9fa;
   border-radius: 8px;
-  padding: 12px;
-  max-height: 600px !important;
-  overflow-y: auto !important;
-  resize: none !important;
-}
-
-/* 针对markdown组件的内部容器 */
-.markdown-result .markdown-body {
-  max-height: 350px !important;
-  overflow-y: auto !important;
-}
-
-.markdown-result .prose {
-  max-height: 350px !important;
-  overflow-y: auto !important;
-}
-
-/* 确保markdown内容区域可滚动 */
-.markdown-result div[class*="markdown"] {
-  max-height: 350px !important;
-  overflow-y: auto !important;
-}
-
-.chat-history {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
   padding: 10px;
+  overflow-y: hidden ;
+  overflow-x: hidden ;
+  resize: none ;
+  display: block ;
+}
+
+#original-copywriting-markdown {
+  height: 200px !important;
+  max-height: 200px !important;
+}
+
+#video-analysis-markdown {
+  height: 250px !important;
+  max-height: 250px !important;
+}
+
+#remake-script-markdown {
+  height: 400px !important;
+  max-height: 400px !important;
 }
 
 .video-preview {
