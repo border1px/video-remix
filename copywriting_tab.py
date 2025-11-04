@@ -195,7 +195,7 @@ def create_copywriting_tab(downloader):
     1. 宝宝的第一视角，风格是：“宝宝吐槽 + 育儿知识反差输出 + 家庭修罗场（三方视角冲突）”
     2. 文案时长控制在45s以内，开头吸睛（宝宝吐槽搞笑/讽刺）；中段带入家庭矛盾或共鸣点；结尾甩出一个轻量育儿干货/金句。
 """,
-                    lines=12,  # 增加行数
+                    lines=8,  # 增加行数
                     placeholder="请输入您想要的文案风格和要求...",
                     elem_classes="left-panel"
                 )
