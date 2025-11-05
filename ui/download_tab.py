@@ -2,11 +2,13 @@ import gradio as gr
 import json
 import os
 import glob
-from douyin_core import DouyinDownloader
+from core import DouyinDownloader
 
 def get_latest_video_path():
     """获取downloads目录中最新的一视频文件路径"""
-    downloads_dir = "downloads"
+    # downloads目录路径：项目根目录的downloads文件夹
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    downloads_dir = os.path.join(base_dir, "downloads")
     if not os.path.exists(downloads_dir):
         return None
     

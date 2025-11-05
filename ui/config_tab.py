@@ -1,5 +1,5 @@
 import gradio as gr
-from config_manager import config_manager
+from core import config_manager
 
 def create_config_tab():
     """创建配置标签页"""

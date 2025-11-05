@@ -4,11 +4,14 @@ import os
 import time
 from google import genai
 from google.genai import types
+from .config_manager import config_manager
 
 class DouyinDownloader:
     def __init__(self, gemini_api_key=None):
         self.api_url = "https://api.suxun.site/api/douyin"
-        self.downloads_dir = "downloads"
+        # 下载目录路径：项目根目录的downloads文件夹
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.downloads_dir = os.path.join(base_dir, "downloads")
         self.gemini_api_key = gemini_api_key
         self.gemini_client = None
         
@@ -185,9 +188,11 @@ class DouyinDownloader:
             if not upload_result['success']:
                 return upload_result
             
+            # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
+            model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
             # 调用Gemini生成文案
             response = self.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt)

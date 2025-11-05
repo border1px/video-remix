@@ -2,7 +2,11 @@ import json
 import os
 
 class ConfigManager:
-    def __init__(self, config_file="config.json"):
+    def __init__(self, config_file=None):
+        if config_file is None:
+            # 默认配置文件路径：项目根目录
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_file = os.path.join(base_dir, "config.json")
         self.config_file = config_file
         self.config = self.load_config()
     

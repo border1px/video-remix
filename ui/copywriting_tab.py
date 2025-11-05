@@ -1,9 +1,9 @@
 import gradio as gr
 import os
 import time
+import re
 from datetime import datetime
-from douyin_core import DouyinDownloader
-from config_manager import config_manager
+from core import DouyinDownloader, config_manager
 from google.genai import types
 
 def create_copywriting_tab(downloader):
@@ -17,6 +17,87 @@ def create_copywriting_tab(downloader):
         """格式化日志条目"""
         current_time = datetime.now().strftime("%H:%M:%S")
         return f"[{current_time}] {message} (耗时: {elapsed_seconds:.1f}秒)"
+    
+    def get_video_path(video_input):
+        """从video_input获取视频路径"""
+        video_path = None
+        if video_input is not None:
+            if isinstance(video_input, str):
+                video_path = video_input
+            elif hasattr(video_input, 'name'):
+                video_path = video_input.name
+            else:
+                video_path = video_input
+        return video_path
+    
+    def get_filename_from_video(video_path):
+        """根据视频文件名和日期生成markdown文件名
+        格式：视频文件名_YYYYMMDD.md
+        同一个视频多次保存会覆盖（文件名相同），不同视频保存新文件
+        """
+        if not video_path:
+            return None
+        
+        # 获取视频文件名（不含扩展名）
+        video_name = os.path.basename(video_path)
+        video_name_without_ext = os.path.splitext(video_name)[0]
+        
+        # 清理文件名，移除特殊字符，保留中英文、数字、下划线和连字符
+        clean_name = re.sub(r'[^\w\s\u4e00-\u9fff-]', '', video_name_without_ext)
+        clean_name = re.sub(r'\s+', '_', clean_name).strip('_')
+        
+        # 如果文件名太长，截取前50个字符
+        if len(clean_name) > 50:
+            clean_name = clean_name[:50]
+        
+        # 获取日期（年月日）
+        date_str = datetime.now().strftime("%Y%m%d")
+        
+        # 生成文件名：视频名_年月日.md
+        filename = f"{clean_name}_{date_str}.md"
+        
+        return filename
+    
+    def save_copywriting(video_input, remake_script, current_log):
+        """保存文案到markdown文件，返回更新后的日志"""
+        if not remake_script or not remake_script.strip():
+            log_entry = format_log_entry(0, "❌ 保存失败：没有可保存的文案内容")
+            return (current_log + "\n" + log_entry) if current_log else log_entry
+        
+        try:
+            # 获取视频路径
+            video_path = get_video_path(video_input)
+            if not video_path or not os.path.exists(video_path):
+                log_entry = format_log_entry(0, "❌ 保存失败：无法确定视频路径，请重新上传视频")
+                return (current_log + "\n" + log_entry) if current_log else log_entry
+            
+            # 生成文件名
+            filename = get_filename_from_video(video_path)
+            if not filename:
+                log_entry = format_log_entry(0, "❌ 保存失败：无法生成文件名")
+                return (current_log + "\n" + log_entry) if current_log else log_entry
+            
+            # 确保data目录存在
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            data_dir = os.path.join(base_dir, "data")
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+            
+            # 保存文件路径
+            filepath = os.path.join(data_dir, filename)
+            
+            # 写入markdown文件
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(remake_script)
+            
+            elapsed = 0  # 保存操作很快，不需要记录耗时
+            log_entry = format_log_entry(elapsed, f"✅ 文案已保存\n📁 文件名: {filename}\n💾 路径: {filepath}")
+            return (current_log + "\n" + log_entry) if current_log else log_entry
+        
+        except Exception as e:
+            elapsed = 0
+            log_entry = format_log_entry(elapsed, f"❌ 保存失败: {str(e)}")
+            return (current_log + "\n" + log_entry) if current_log else log_entry
     
     def generate_copywriting(video_input, account_positioning):
         """一次性生成三块内容：解析文案、分析特点、二创文案"""
@@ -85,8 +166,10 @@ def create_copywriting_tab(downloader):
 2. 按照视频中出现的顺序，完整呈现文案文本
 3. 如果有字幕或文字，直接提取字幕内容
 4. 如果是对话或旁白，用引号标注并说明是谁说的"""
+            # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
+            model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
             response1 = downloader.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt1)
@@ -105,8 +188,10 @@ def create_copywriting_tab(downloader):
 5. 视频的视觉元素（如：场景、道具、服装等）
 6. 视频的目标受众和传播特点
 请给出详细的分析报告。"""
+            # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
+            model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
             response2 = downloader.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt2)
@@ -135,8 +220,10 @@ def create_copywriting_tab(downloader):
 4. 脚本要有清晰的开始、发展、高潮、结尾结构
 5. 语言要生动有趣，符合你的账号风格"""
             
+            # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
+            model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
             response3 = downloader.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt3)
@@ -216,8 +303,10 @@ def create_copywriting_tab(downloader):
 4. 脚本要有清晰的开始、发展、高潮、结尾结构
 5. 语言要生动有趣，符合你的账号风格"""
             
+            # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
+            model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
             response3 = downloader.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=file_uri)),
                     types.Part(text=prompt3)
@@ -309,14 +398,16 @@ def create_copywriting_tab(downloader):
                         elem_id="remake-script-markdown"
                     )
                 
-                # 重新生成按钮（独立一行，正常高度）
+                # 重新生成和保存按钮（独立一行，正常高度）
                 with gr.Row():
                     regenerate_btn = gr.Button("🔄 重新生成", variant="secondary", interactive=False)
+                    save_btn = gr.Button("💾 保存文案", variant="secondary", interactive=False)
         
         # 状态变量
         file_uri_state = gr.State(value="")
         original_copywriting_state = gr.State(value="")
         video_analysis_state = gr.State(value="")
+        current_video_path_state = gr.State(value="")
         
         # 绑定事件
         generate_btn.click(
@@ -332,8 +423,9 @@ def create_copywriting_tab(downloader):
                 video_analysis_state
             ]
         ).then(
-            lambda: gr.update(interactive=True),
-            outputs=[regenerate_btn]
+            lambda video: (gr.update(interactive=True), gr.update(interactive=True), get_video_path(video)),
+            inputs=[video_input],
+            outputs=[regenerate_btn, save_btn, current_video_path_state]
         )
         
         # 重新生成按钮事件（只更新文案脚本）
@@ -344,6 +436,13 @@ def create_copywriting_tab(downloader):
                 remake_script_display,
                 progress_status
             ]
+        )
+        
+        # 保存文案按钮事件
+        save_btn.click(
+            fn=save_copywriting,
+            inputs=[video_input, remake_script_display, progress_status],
+            outputs=[progress_status]
         )
         
         return video_input, generate_btn

@@ -1,13 +1,11 @@
 import gradio as gr
 import os
-from douyin_core import DouyinDownloader
-from download_tab import create_download_tab
-from copywriting_tab import create_copywriting_tab
-from config_tab import create_config_tab
+from core import DouyinDownloader
+from ui import create_download_tab, create_copywriting_tab, create_config_tab
 
 # 读取外部 CSS 文件
 def load_css():
-    css_path = os.path.join(os.path.dirname(__file__), "style.css")
+    css_path = os.path.join(os.path.dirname(__file__), "static", "style.css")
     if os.path.exists(css_path):
         with open(css_path, "r", encoding="utf-8") as f:
             return f.read()
