@@ -1,7 +1,7 @@
 import gradio as gr
 import os
 from core import DouyinDownloader
-from ui import create_download_tab, create_copywriting_tab, create_config_tab
+from ui import create_download_tab, create_copywriting_tab, create_config_tab, create_jianying_tab
 
 # 读取外部 CSS 文件
 def load_css():
@@ -18,7 +18,7 @@ def create_interface():
         theme=gr.themes.Soft(),
         css=load_css()
     ) as interface:
-        gr.Markdown("# 🎵 创作者工具")
+        gr.Markdown("# 🌈 创作者工具")
         
         downloader = DouyinDownloader()
         current_video_path = gr.State(value=None)
@@ -26,6 +26,7 @@ def create_interface():
         with gr.Tabs():
             input_text, reference_btn, global_copywriting_video_path = create_download_tab(downloader)
             video_input, generate_btn = create_copywriting_tab(downloader)
+            create_jianying_tab()
             create_config_tab()
         
         def sync_video_to_copywriting(video_path):

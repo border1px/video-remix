@@ -2,6 +2,7 @@
 from .download_tab import create_download_tab
 from .copywriting_tab import create_copywriting_tab
 from .config_tab import create_config_tab
+from .jianying_tab import create_jianying_tab
 
-__all__ = ['create_download_tab', 'create_copywriting_tab', 'create_config_tab']
+__all__ = ['create_download_tab', 'create_copywriting_tab', 'create_config_tab', 'create_jianying_tab']
 

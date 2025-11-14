@@ -4,6 +4,9 @@ import os
 import time
 from google import genai
 from google.genai import types
+import hashlib
+import shutil
+import tempfile
 from .config_manager import config_manager
 
 class DouyinDownloader:
@@ -109,71 +112,124 @@ class DouyinDownloader:
             }
     
     def upload_video_to_gemini(self, video_path):
-        """上传视频到Gemini"""
+        """上传视频到Gemini（增强：对含非 ASCII 的路径做临时拷贝并上传）"""
+        # 内部帮助函数：生成 ASCII-safe 的临时拷贝（如不需要则返回原 path, False）
+        def _make_ascii_safe_copy(src_path):
+            if not src_path:
+                return src_path, False
+            try:
+                basename = os.path.basename(src_path)
+            except Exception:
+                basename = "video"
+            # 如果文件名全部是 ASCII，则直接返回原路径（不拷贝）
+            if all(ord(ch) < 128 for ch in basename):
+                return src_path, False
+            # 生成唯一短 id，构造安全文件名
+            sha1 = hashlib.sha1()
+            sha1.update(src_path.encode('utf-8', errors='ignore'))
+            digest = sha1.hexdigest()[:12]
+            _, ext = os.path.splitext(basename)
+            if not ext:
+                ext = '.mp4'
+            safe_name = f"video_{digest}{ext}"
+            tmp_dir = tempfile.gettempdir()
+            dst_path = os.path.join(tmp_dir, safe_name)
+            try:
+                # 若目标已存在且大小一致，直接复用
+                if os.path.exists(dst_path) and os.path.getsize(dst_path) == os.path.getsize(src_path):
+                    return dst_path, True
+            except Exception:
+                pass
+            # 拷贝并保留元数据
+            shutil.copy2(src_path, dst_path)
+            return dst_path, True
+
+        if not self.gemini_client:
+            return {
+                'success': False,
+                'error': 'Gemini API密钥未配置'
+            }
+
+        safe_path = video_path
+        created_temp = False
+        result = None
+
         try:
-            if not self.gemini_client:
-                return {
-                    'success': False,
-                    'error': 'Gemini API密钥未配置'
-                }
-            
-            # 上传视频文件
-            uploaded_file = self.gemini_client.files.upload(file=video_path)
-            
-            # 等待上传完成
+            # 1) 如果文件名包含非 ASCII，先创建一个 ASCII-safe 的临时拷贝并上传该拷贝
+            safe_path, created_temp = _make_ascii_safe_copy(video_path)
+
+            # 2) 上传视频文件（使用 SDK 的 upload 接口）
+            #    这里直接传路径（与原代码保持一致）。
+            uploaded_file = self.gemini_client.files.upload(file=safe_path)
+
+            # 3) 等待上传并轮询文件状态
             max_wait_time = 300  # 最多等待5分钟
             wait_interval = 2    # 每2秒检查一次
             elapsed_time = 0
-            
+
             while elapsed_time < max_wait_time:
                 try:
-                    # 检查文件状态
-                    file_info = self.gemini_client.files.get(name=uploaded_file.name)
-                    
-                    if file_info.state == "ACTIVE":
-                        return {
+                    # 有些 SDK 返回的 uploaded_file 可能包含 name 属性，也可能需要用上面返回的 name
+                    file_name_for_query = getattr(uploaded_file, "name", None) or os.path.basename(safe_path)
+                    file_info = self.gemini_client.files.get(name=file_name_for_query)
+
+                    if getattr(file_info, "state", None) == "ACTIVE":
+                        result = {
                             'success': True,
-                            'file_uri': uploaded_file.uri,
-                            'file_name': uploaded_file.name
+                            'file_uri': getattr(uploaded_file, "uri", None),
+                            'file_name': getattr(uploaded_file, "name", file_name_for_query)
                         }
-                    elif file_info.state == "FAILED":
-                        return {
+                        break
+                    elif getattr(file_info, "state", None) == "FAILED":
+                        result = {
                             'success': False,
                             'error': '文件处理失败'
                         }
-                    elif file_info.state in ["PROCESSING", "PENDING"]:
-                        # 文件还在处理中，继续等待
-                        pass
-                    else:
-                        # 其他状态，继续等待
-                        pass
-                    
+                        break
+                    # 如果仍在 PROCESSING/PENDING，继续等待
                 except Exception as e:
-                    # 如果获取文件信息失败，可能是文件还在上传中
-                    if "not found" in str(e).lower() or "not finalized" in str(e).lower():
-                        # 文件还在上传中，继续等待
+                    # 兼容性判断：部分 SDK 在文件未最终化时会抛出 not found / not finalized 类似错误
+                    lower = str(e).lower()
+                    if "not found" in lower or "not finalized" in lower:
+                        # 文件还在上传/处理，继续等待
                         pass
                     else:
-                        # 其他错误，返回错误信息
-                        return {
+                        result = {
                             'success': False,
                             'error': f'检查文件状态失败: {str(e)}'
                         }
-                
-                # 等待后继续检查
+                        break
+
                 time.sleep(wait_interval)
                 elapsed_time += wait_interval
-            
-            return {
-                'success': False,
-                'error': '文件处理超时'
-            }
+
+            if result is None:
+                # 如果循环结束还没有结果，则超时
+                result = {
+                    'success': False,
+                    'error': '文件处理超时'
+                }
+
+            return result
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'上传失败: {str(e)}'
             }
-    
+        finally:
+            # 清理临时拷贝（如果创建过）
+            try:
+                if created_temp and safe_path and os.path.exists(safe_path):
+                    try:
+                        os.remove(safe_path)
+                    except Exception:
+                        # 无需中断主流程，如果删除失败就忽略
+                        pass
+            except Exception:
+                pass
+
+
     def generate_copywriting(self, video_path, prompt="请分析这个视频的内容，并生成一个吸引人的抖音文案，要求：1. 突出视频亮点 2. 使用热门话题标签 3. 语言生动有趣 4. 适合抖音平台传播"):
         """使用Gemini生成文案"""
         try:

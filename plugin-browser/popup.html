@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>豆包图片下载器</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <h2>豆包图片下载器</h2>
+    </div>
+    
+    <div class="content">
+      <div class="switch-section">
+        <label class="switch-label">
+          <span>插件状态</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="plugin-enabled">
+            <span class="slider"></span>
+          </label>
+        </label>
+        <p class="status-text" id="status-text">已禁用</p>
+      </div>
+      
+      <div class="stats-section">
+        <h3>处理状态</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">总图片数</div>
+            <div class="stat-value" id="stat-total">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">已处理</div>
+            <div class="stat-value stat-success" id="stat-processed">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">失败</div>
+            <div class="stat-value stat-error" id="stat-failed">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">剩余</div>
+            <div class="stat-value" id="stat-remaining">0</div>
+          </div>
+        </div>
+        
+        <div id="failed-images-section" class="failed-images-section" style="display: none;">
+          <h4>失败的图片</h4>
+          <div id="failed-images-list" class="failed-images-list"></div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button id="open-settings" class="btn btn-primary">打开设置</button>
+        <button id="refresh-stats" class="btn btn-secondary">刷新状态</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+

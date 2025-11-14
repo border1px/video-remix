@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>插件设置 - 豆包图片下载器</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>插件设置</h1>
+      <p class="subtitle">配置图片下载和压缩选项</p>
+    </div>
+    
+    <div class="settings-section">
+      <h2>下载设置</h2>
+      
+      <div class="form-group">
+        <label for="download-path">保存路径</label>
+        <input type="text" id="download-path" placeholder="例如: Downloads/DoubaoImages">
+        <small>相对浏览器的下载目录，留空则使用默认下载目录</small>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <h2>网站配置</h2>
+      
+      <div class="form-group">
+        <label for="enabled-sites">生效网站列表</label>
+        <textarea id="enabled-sites" rows="4" placeholder="每行一个网站域名，例如：&#10;doubao.com&#10;jimeng.com"></textarea>
+        <small>每行一个域名，支持通配符。默认: doubao.com</small>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <h2>TinyPNG 配置</h2>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="tinypng-enabled">
+          启用TinyPNG压缩功能
+        </label>
+        <small>勾选后，下载图片前会先通过TinyPNG进行压缩和缩放</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="tinypng-apikey">API Key</label>
+        <input type="password" id="tinypng-apikey" placeholder="输入您的TinyPNG API Key">
+        <small>在 <a href="https://tinypng.com/developers" target="_blank">TinyPNG开发者页面</a> 获取API Key</small>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="target-width">目标宽度 (px)</label>
+          <input type="number" id="target-width" min="1" placeholder="例如: 1080" value="1080">
+        </div>
+        
+        <div class="form-group">
+          <label for="target-height">目标高度 (px)</label>
+          <input type="number" id="target-height" min="1" placeholder="例如: 1920">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="preserve-aspect-ratio" disabled>
+          保持宽高比
+        </label>
+        <small>勾选后，将按比例缩放，不会变形</small>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button id="save-btn" class="btn btn-primary">保存设置</button>
+      <button id="reset-btn" class="btn btn-secondary">重置为默认</button>
+    </div>
+    
+    <div id="message" class="message"></div>
+  </div>
+  
+  <script src="options.js"></script>
+</body>
+</html>
+

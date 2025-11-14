@@ -1,0 +1,67 @@
+/* content.css - 内容脚本样式 */
+
+.doubao-download-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10000;
+}
+
+.doubao-download-btn {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s;
+  opacity: 0.9;
+  padding: 0;
+  margin: 0;
+}
+
+.doubao-download-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.doubao-download-btn:active {
+  transform: scale(0.95);
+}
+
+.doubao-download-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: white;
+  pointer-events: none;
+}
+
+.doubao-download-btn.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: spin 1s linear infinite;
+}
+
+.doubao-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.doubao-download-btn.success {
+  background: #52c41a;
+}
+
+.doubao-download-btn.error {
+  background: #ff4d4f;
+}
+
