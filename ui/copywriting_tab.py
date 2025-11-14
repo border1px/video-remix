@@ -168,8 +168,8 @@ def create_copywriting_tab(downloader):
 4. 如果是对话或旁白，用引号标注并说明是谁说的"""
             # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
             model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
-            response1 = downloader.gemini_client.models.generate_content(
-                model=model_name,
+            response1 = downloader.generate_content_with_retry(
+                model_name=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt1)
@@ -178,6 +178,9 @@ def create_copywriting_tab(downloader):
             original_copywriting = response1.text
             elapsed_time = time.time() - start_time
             status_log.append(format_log_entry(elapsed_time, "✅ 视频文案解析完成"))
+            
+            # 在连续请求之间添加短暂延迟，避免触发速率限制
+            time.sleep(1)
             
             # 第二步：分析视频的特点、风格、结构等信息
             prompt2 = """请详细分析这个视频的特点、风格和结构，包括但不限于：
@@ -190,8 +193,8 @@ def create_copywriting_tab(downloader):
 请给出详细的分析报告。"""
             # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
             model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
-            response2 = downloader.gemini_client.models.generate_content(
-                model=model_name,
+            response2 = downloader.generate_content_with_retry(
+                model_name=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt2)
@@ -200,6 +203,9 @@ def create_copywriting_tab(downloader):
             video_analysis = response2.text
             elapsed_time = time.time() - start_time
             status_log.append(format_log_entry(elapsed_time, "✅ 视频分析完成"))
+            
+            # 在连续请求之间添加短暂延迟，避免触发速率限制
+            time.sleep(1)
             
             # 第三步：基于账号定位和视频，生成二创文案脚本
             prompt3 = f"""基于以下信息，创作一个新的短视频脚本：
@@ -222,8 +228,8 @@ def create_copywriting_tab(downloader):
             
             # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
             model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
-            response3 = downloader.gemini_client.models.generate_content(
-                model=model_name,
+            response3 = downloader.generate_content_with_retry(
+                model_name=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt3)
@@ -305,8 +311,8 @@ def create_copywriting_tab(downloader):
             
             # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
             model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
-            response3 = downloader.gemini_client.models.generate_content(
-                model=model_name,
+            response3 = downloader.generate_content_with_retry(
+                model_name=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=file_uri)),
                     types.Part(text=prompt3)
@@ -376,7 +382,7 @@ def create_copywriting_tab(downloader):
             
             # 右侧：结果展示
             with gr.Column(scale=2):
-                with gr.Accordion("🔍 视频特点、风格、结构分析", open=False):
+                with gr.Accordion("🔍 原视频分析", open=False):
                     video_analysis_display = gr.Markdown(
                         value="💡 等待AI分析视频特点...",
                         elem_classes="markdown-result",
@@ -384,14 +390,14 @@ def create_copywriting_tab(downloader):
                     )
                 
                 # 使用Accordion折叠组件来节省空间
-                with gr.Accordion("📝 解析上传视频的文案", open=True):
+                with gr.Accordion("📝 原视频文案", open=False):
                     original_copywriting_display = gr.Markdown(
                         value="💡 等待AI解析视频文案...",
                         elem_classes="markdown-result",
                         elem_id="original-copywriting-markdown"
                     )
                 
-                with gr.Accordion("✍️ 基于账号定位的二创文案脚本", open=True):
+                with gr.Accordion("✍️ 二创文案", open=True):
                     remake_script_display = gr.Markdown(
                         value="💡 等待AI生成二创文案脚本...",
                         elem_classes="markdown-result",

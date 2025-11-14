@@ -18,7 +18,7 @@ def create_interface():
         theme=gr.themes.Soft(),
         css=load_css()
     ) as interface:
-        gr.Markdown("# 🌈 创作者工具")
+        gr.Markdown("# 🎵 创作者工具")
         
         downloader = DouyinDownloader()
         current_video_path = gr.State(value=None)

@@ -230,6 +230,57 @@ class DouyinDownloader:
                 pass
 
 
+    def generate_content_with_retry(self, model_name, contents, max_retries=5, base_delay=2):
+        """
+        带重试机制的 Gemini API 调用
+        使用指数退避策略处理 503 等临时错误
+        
+        Args:
+            model_name: 模型名称
+            contents: 请求内容
+            max_retries: 最大重试次数
+            base_delay: 基础延迟时间（秒），每次重试会指数增长
+        
+        Returns:
+            response 对象或抛出异常
+        """
+        if not self.gemini_client:
+            raise Exception('Gemini API密钥未配置')
+        
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=contents
+                )
+                return response
+            except Exception as e:
+                last_exception = e
+                error_str = str(e).lower()
+                
+                # 检查是否是 503 或其他可重试的错误
+                is_retryable = (
+                    '503' in error_str or 
+                    'unavailable' in error_str or
+                    'overloaded' in error_str or
+                    'rate limit' in error_str or
+                    '429' in error_str
+                )
+                
+                # 如果不是可重试的错误，或者已经达到最大重试次数，直接抛出异常
+                if not is_retryable or attempt == max_retries - 1:
+                    raise
+                
+                # 计算延迟时间（指数退避：2s, 4s, 8s, 16s, 32s）
+                delay = base_delay * (2 ** attempt)
+                print(f"⚠️ API调用失败（尝试 {attempt + 1}/{max_retries}），{delay}秒后重试...")
+                time.sleep(delay)
+        
+        # 如果所有重试都失败了，抛出最后一个异常
+        raise last_exception
+
     def generate_copywriting(self, video_path, prompt="请分析这个视频的内容，并生成一个吸引人的抖音文案，要求：1. 突出视频亮点 2. 使用热门话题标签 3. 语言生动有趣 4. 适合抖音平台传播"):
         """使用Gemini生成文案"""
         try:
@@ -246,9 +297,9 @@ class DouyinDownloader:
             
             # 获取模型名称（从配置读取，默认使用gemini-2.5-flash）
             model_name = config_manager.get("gemini_model_name", "gemini-2.5-flash")
-            # 调用Gemini生成文案
-            response = self.gemini_client.models.generate_content(
-                model=model_name,
+            # 调用Gemini生成文案（使用重试机制）
+            response = self.generate_content_with_retry(
+                model_name=model_name,
                 contents=[
                     types.Part(file_data=types.FileData(file_uri=upload_result['file_uri'])),
                     types.Part(text=prompt)
